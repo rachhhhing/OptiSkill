@@ -1,0 +1,171 @@
+strategy_generation_system_prompt = """You are an expert in operations research modeling strategy distillation.
+
+Return only the requested JSON object. Do not include markdown fences, hidden reasoning tags, or extra commentary.
+"""
+
+strategy_generation_user_prompt = """You are an expert in operations research modeling distillation.
+
+Your job is to extract one reusable Strategy Skill from ONE correct modeling trajectory for ONE optimization problem.
+
+You are not solving the problem again. You are distilling a stable, reusable modeling strategy that can help a future model recognize and structure similar problems.
+
+You must identify:
+1. problem_type: the main problem family used for routing retrieval; it must be selected from the provided list only.
+2. summary: the key structural signals in the problem that indicate this strategy should be used.
+3. procedure: 4 to 6 stable high-level modeling steps in modeling order; each step should describe a reusable action, not instance-specific numbers.
+
+The strategy must be general:
+- Do not mention instance-specific numeric values.
+- Do not restate the whole problem.
+- Describe the modeling skeleton, not coding syntax.
+- Make the summary useful for future retrieval.
+
+The output must be a single valid JSON object and nothing else.
+
+Output schema:
+{
+  "problem_type": "...",
+  "summary": "...",
+  "procedure": ["...", "...", "...", "..."]
+}
+
+You are given one optimization problem and one correct modeling trajectory. Your task is to distill exactly one Strategy Skill.
+
+Fixed problem_type list:
+{
+  "allocation": "Problems whose main decision is how much resource, budget, investment, production, or mixture quantity to allocate. Includes resource allocation, budget allocation, investment planning, production quantity decisions, blending/diet models, and simple LP/ILP quantity optimization.",
+  "assignment": "Problems whose main decision is assigning one set of entities to another. Includes person-to-task, customer-to-facility, project-to-worker, and other matching-style formulations.",
+  "selection": "Problems whose main decision is selecting a subset of candidate options. Includes knapsack-style selection, set covering, facility location, fire station placement, media selection, and binary buy-or-not-buy decisions.",
+  "flow": "Problems centered on movement through a network with flow balance or supply-demand structure. Includes transportation, transshipment, maximum flow, minimum-cost flow, and supply-demand network optimization.",
+  "time_planning": "Problems with decisions linked across multiple time periods. Includes multi-period planning, inventory balance, backlog, carry-over state transitions, and quarter-by-quarter production planning.",
+  "routing": "Problems whose core decision is a path, tour, or visit order. Includes TSP, VRP, route design, tour construction, and closed-loop visitation problems.",
+  "scheduling": "Problems whose core decision is the timing or sequencing of tasks, jobs, machines, crews, or operations. Includes job shop scheduling, machine scheduling, crew scheduling, aircraft landing scheduling, and precedence-constrained sequencing.",
+  "special": "Use only when the main modeling difficulty is a special mathematical structure rather than the domain skeleton. Includes fractional objectives, multi-objective optimization, explicit disjunctive logic, and absolute-value-dominant formulations."
+}
+
+Problem:
+{question}
+
+Correct trajectory:
+{correct_trajectory}"""
+
+experience_generation_system_prompt = """You are an expert in operations research modeling experience distillation.
+
+Return only the requested JSON object. Do not include markdown fences, hidden reasoning tags, or extra commentary.
+"""
+
+experience_generation_user_prompt = """You are an expert in operations research modeling distillation.
+
+Your job is to extract one reusable Experience Skill from a pair of trajectories for the same optimization problem.
+
+You are not solving the problem again. You are comparing the two trajectories to identify one high-value, reusable anti-error modeling experience.
+
+The experience must be LOCAL and STEP-LEVEL:
+- It should correspond to one specific modeling decision point.
+- It must NOT summarize the whole problem, the whole strategy, or the whole solution.
+- The trigger should describe the local structural signal that should alert the model.
+- The guidance should describe the concrete modeling action that should be taken.
+
+The experience must be general:
+- Do not mention instance-specific numeric values.
+- Do not create a broad strategy; keep it as one local modeling check.
+- Do not write code snippets as the guidance.
+
+The output must be a single valid JSON object and nothing else.
+
+Output schema:
+{
+  "problem_type": "...",
+  "trigger": "...",
+  "guidance": "..."
+}
+
+Fixed problem_type list:
+{
+  "allocation": "Problems whose main decision is how much resource, budget, investment, production, or mixture quantity to allocate. Includes resource allocation, budget allocation, investment planning, production quantity decisions, blending/diet models, and simple LP/ILP quantity optimization.",
+  "assignment": "Problems whose main decision is assigning one set of entities to another. Includes person-to-task, customer-to-facility, project-to-worker, and other matching-style formulations.",
+  "selection": "Problems whose main decision is selecting a subset of candidate options. Includes knapsack-style selection, set covering, facility location, fire station placement, media selection, and binary buy-or-not-buy decisions.",
+  "flow": "Problems centered on movement through a network with flow balance or supply-demand structure. Includes transportation, transshipment, maximum flow, minimum-cost flow, and supply-demand network optimization.",
+  "time_planning": "Problems with decisions linked across multiple time periods. Includes multi-period planning, inventory balance, backlog, carry-over state transitions, and quarter-by-quarter production planning.",
+  "routing": "Problems whose core decision is a path, tour, or visit order. Includes TSP, VRP, route design, tour construction, and closed-loop visitation problems.",
+  "scheduling": "Problems whose core decision is the timing or sequencing of tasks, jobs, machines, crews, or operations. Includes job shop scheduling, machine scheduling, crew scheduling, aircraft landing scheduling, and precedence-constrained sequencing.",
+  "special": "Use only when the main modeling difficulty is a special mathematical structure rather than the domain skeleton. Includes fractional objectives, multi-objective optimization, explicit disjunctive logic, and absolute-value-dominant formulations."
+}
+
+Problem:
+{question}
+
+Correct trajectory:
+{correct_trajectory}
+
+Incorrect trajectory:
+{incorrect_trajectory}
+
+Return only one JSON object in the required format."""
+
+strategy_dedup_system_prompt = """You are an expert in operations research skill deduplication.
+
+Return only the requested JSON object. Do not include markdown fences, hidden reasoning tags, or extra commentary.
+"""
+
+strategy_dedup_user_prompt = """You are an expert in operations research skill deduplication.
+
+Your job is to determine whether one candidate Strategy Skill is duplicate, mergeable, or new with respect to existing skills in the same problem_type bucket.
+
+Use:
+- duplicate: when the candidate already expresses essentially the same strategy as an existing skill.
+- mergeable: when the candidate and one existing skill describe the same underlying strategy, but they should be consolidated into one improved canonical skill.
+- new: when the candidate is meaningfully different and should be added as a separate strategy.
+
+You will compare:
+- one candidate strategy skill,
+- a list of existing strategy skills from the SAME problem_type bucket.
+
+Output only one valid JSON object and nothing else.
+
+Output schema:
+{
+  "decision": "duplicate" | "mergeable" | "new",
+  "matched_id": "..." | null,
+  "merged_skill": {
+    "problem_type": "...",
+    "summary": "...",
+    "procedure": ["...", "...", "...", "..."]
+  } | null
+}
+
+Candidate skill:
+{candidate_strategy}
+
+Existing skills in the same problem_type bucket:
+{existing_strategy_list}
+
+Return only one JSON object in the required format."""
+
+experience_dedup_system_prompt = """You are an expert in operations research skill deduplication.
+
+Your job is to determine whether one candidate Experience Skill is duplicate or new with respect to existing experiences in the same problem_type bucket.
+
+For Experience Skill, do NOT perform merge. A candidate is:
+- duplicate: when it expresses essentially the same anti-error lesson as an existing skill,
+- new: when it captures a meaningfully different local mistake pattern.
+
+Output only one valid JSON object and nothing else.
+
+Output schema:
+{
+  "decision": "duplicate" | "new",
+  "matched_id": "..." | null
+}"""
+
+experience_dedup_user_prompt = """You are given one candidate Experience Skill and a list of existing Experience Skills from the same problem_type bucket.
+
+Your task is to judge whether the candidate is duplicate or new.
+
+Candidate skill:
+{candidate_experience}
+
+Existing skills in the same problem_type bucket:
+{existing_experience_list}
+
+Return only one JSON object in the required format."""

@@ -1,0 +1,867 @@
+{
+  "allocation": {
+    "strategies": [
+      {
+        "index": "alloca_strategy_001",
+        "summary": "Linear quantity allocation with per-item bounds and shared constraint factors. Use when selecting non-negative quantities of multiple items to optimize a linear total objective, each item has per-unit contributions to shared constraint factors (e.g., resources, nutrients) with minimum/maximum total limits, and per-item quantity bounds may exist.",
+        "procedure": [
+          "Define sets for items and constraint factors with limits.",
+          "Define parameters: per-unit objective contributions, per-unit contributions to each constraint factor, factor limits, and per-item quantity bounds.",
+          "Define non-negative decision variables for item quantities (integer or continuous as required).",
+          "Form linear objective: sum of (per-unit contribution * variable) across all items.",
+          "Enforce per-item quantity bounds and integrality if needed.",
+          "For each constraint factor, enforce that total contribution across items meets its minimum and/or maximum limit."
+        ]
+      },
+      {
+        "index": "alloca_strategy_002",
+        "summary": "Bipartite allocation with minimum supplier count and per-pair delivery thresholds. Use when each sink requires a minimum number of distinct active sources, and any active source-sink pair must deliver at least a specified minimum quantity.",
+        "procedure": [
+          "Define source and sink sets with capacities, demands, costs, minimum supplier count per sink, and minimum delivery quantity per active pair.",
+          "Create continuous allocation variables and binary participation variables for each source-sink pair.",
+          "Set objective to minimize total cost or maximize total profit from allocations.",
+          "Enforce source capacity limits and sink demand fulfillment constraints.",
+          "For each sink, require the sum of its binary variables to meet the minimum supplier count.",
+          "Link each pair's allocation to its binary variable using big-M constraints to enforce the minimum delivery quantity when active."
+        ]
+      },
+      {
+        "index": "alloca_strategy_003",
+        "summary": "Fixed-charge selection and bounded allocation. Use when binary activation flags control minimum/maximum allocation bounds, total weighted consumption must respect shared resource capacity, and unmet demand incurs penalties.",
+        "procedure": [
+          "Define sets for candidate entities, demand groups, and periods. Specify fixed/variable costs, allocation bounds, demand targets, resource consumption rates, capacity, and penalty costs.",
+          "Create binary activation variables, non-negative allocation variables, and unmet demand variables.",
+          "Formulate objective to minimize total fixed activation costs, variable allocation costs, and unmet demand penalties.",
+          "Link activation to allocation: enforce zero allocation if inactive, and bounds if active.",
+          "Constrain total weighted consumption from all allocations to not exceed shared resource capacity.",
+          "For each demand group, require total allocated service plus unmet demand to meet the target."
+        ]
+      },
+      {
+        "index": "alloca_strategy_004",
+        "summary": "Integer allocation of predefined patterns with fixed multi-resource contributions. Use when selecting integer counts of discrete activities to meet multiple minimum requirements, each activity provides a fixed per-use contribution vector, and the objective minimizes total uses or execution costs.",
+        "procedure": [
+          "Define sets of available patterns/activities and distinct requirements to fulfill.",
+          "Define parameters: per-execution contribution matrix, minimum requirement levels, optional per-pattern usage limits and execution costs.",
+          "Define non-negative integer decision variables for pattern/activity usage counts.",
+          "Formulate objective: minimize sum of usage variables or total execution costs.",
+          "Add constraints ensuring total contributions meet or exceed each requirement's minimum level.",
+          "Enforce per-pattern usage limits and variable integrality where applicable."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "alloca_exp_001",
+        "trigger": "Variable-domain decision for allocation quantities with ambiguous divisibility. Use when quantities may represent either indivisible count-like units or divisible/fractional resources, and integer-vs-continuous misclassification would change the feasible region or objective.",
+        "guidance": "Choose variable domains by divisibility: use integer variables for indivisible counts such as batches, bags, bottles, products, vehicles, facilities, tests, or machines; use continuous variables for divisible quantities such as weight, volume, time, money, flow, percentages, or explicitly fractional production levels."
+      },
+      {
+        "index": "alloca_exp_002",
+        "trigger": "Constraint-sense decision for minimum requirements in allocation models. Use when wording such as minimum, at least, meet demand, or demand fulfillment may be confused with exact satisfaction.",
+        "guidance": "Model minimum requirements as lower bounds when excess is allowed and the objective discourages unnecessary over-supply; use equality only when exact satisfaction, balance, or full matching is explicitly required or logically implied."
+      },
+      {
+        "index": "alloca_exp_003",
+        "trigger": "When minimum contribution rules exist, clarify whether they apply per supplier-contract pair or to the supplier's total participation to avoid over- or under-enforcement.",
+        "guidance": "Verify the scope of the minimum requirement and define constraints that apply it at the correct level (per pair or total)."
+      },
+      {
+        "index": "alloca_exp_004",
+        "trigger": "When problem data provides explicit numerical or structural parameter values, conceptually defining them without values creates an underspecified model.",
+        "guidance": "Explicitly list all given parameter values and structural mappings directly from the problem data during parameter definition."
+      },
+      {
+        "index": "alloca_exp_005",
+        "trigger": "When modeling fixed-cost activation with minimum/maximum production requirements, failing to multiply both bounds by the binary activation variable causes invalid behavior like forcing production from inactive facilities.",
+        "guidance": "For each facility, multiply both minimum and maximum production bounds by the binary activation variable in their respective constraints."
+      },
+      {
+        "index": "alloca_exp_006",
+        "trigger": "Avoid hardcoding numerical resource limits directly into constraints, as this reduces maintainability and clarity when values need updating.",
+        "guidance": "Define the total available resource as a named parameter first, then reference that parameter in your capacity constraint."
+      },
+      {
+        "index": "alloca_exp_007",
+        "trigger": "When modeling product-resource consumption with per-product decisions and shared capacity constraints, misaligned matrix indices risk summing over the wrong dimension in capacity constraints.",
+        "guidance": "Define the consumption parameter with the product (decision variable) index first and the resource index second to align with per-resource constraint summation."
+      },
+      {
+        "index": "alloca_exp_008",
+        "trigger": "Inequality and strict-relation handling in minimization allocation models. Use when capacity limits, ratios, preferences, or strict comparisons may allow a zero or near-zero solution without explicit positive demand.",
+        "guidance": "Before relying on inequalities, identify explicit lower-bound requirements such as demand, minimum production, service, or coverage. Do not use tiny epsilon strict inequalities for continuous variables unless the modeling convention justifies them; for integer counts, strict comparison may require a domain-aware gap."
+      },
+      {
+        "index": "alloca_exp_009",
+        "trigger": "When full resource deployment is mandatory, using a ≤ constraint permits underutilization and invalid low-cost solutions.",
+        "guidance": "Formulate the total resource allocation as an equality constraint to ensure all available resources are used."
+      },
+      {
+        "index": "alloca_exp_010",
+        "trigger": "When products consume subsets of shared resources, avoid ad-hoc product sets that risk incomplete mappings.",
+        "guidance": "Define a binary incidence matrix parameter and use it to systematically construct all shared capacity constraints."
+      },
+      {
+        "index": "alloca_exp_011",
+        "trigger": "When multi-dimensional input data has a fixed hierarchical order, mismatching index order risks parameter misassignment and calculation errors.",
+        "guidance": "Define decision variable and parameter index orders to exactly match the hierarchical order of the provided input data."
+      },
+      {
+        "index": "alloca_exp_012",
+        "trigger": "Classify integer-variable problems as ILP, not LP, to avoid invalid fractional solutions from continuous-only solvers.",
+        "guidance": "Explicitly model integer variable restrictions as ILP to ensure solver compatibility and valid integer solutions."
+      },
+      {
+        "index": "alloca_exp_013",
+        "trigger": "When binary variables control activation with production bounds dependent on them, omitting binary constraints allows fractional activation, breaking min/max bounds and permitting invalid partial operation.",
+        "guidance": "Explicitly add constraints declaring all activation decision variables as binary (0 or 1) across all relevant indices."
+      },
+      {
+        "index": "alloca_exp_014",
+        "trigger": "When allocation variable units differ from demand units or per-unit contributions vary, directly summing allocations causes unit inconsistency and incorrect demand counting.",
+        "guidance": "Introduce a conversion parameter for each option-demand pair and multiply it by the allocation variable in the demand constraint."
+      },
+      {
+        "index": "alloca_exp_015",
+        "trigger": "Before classifying an allocation problem as an LP, verify both the objective and all constraints are linear combinations of variables.",
+        "guidance": "Explicitly confirm no variable products or non-linear terms exist in the objective or any constraint before finalizing the LP model."
+      },
+      {
+        "index": "alloca_exp_016",
+        "trigger": "When both 'maximum demand limit' and 'satisfy demand' appear, interpret 'satisfy demand' as an upper bound, not a lower bound, to avoid infeasibility.",
+        "guidance": "Model demand constraints as upper bounds; only add lower bounds if explicit minimum fulfillment is required."
+      },
+      {
+        "index": "alloca_exp_017",
+        "trigger": "Distinguish inherent variable limits from problem-specific per-variable restrictions like production capacities.",
+        "guidance": "Model problem-specific per-variable limits as separate constraints, not as variable domain bounds."
+      },
+      {
+        "index": "alloca_exp_018",
+        "trigger": "When variables represent counts of indivisible physical units, omitting explicit constraints risks invalid fractional or negative solutions.",
+        "guidance": "Always include explicit non-negativity and integrality constraints for all integer decision variables in the model's constraints section."
+      }
+    ]
+  },
+  "assignment": {
+    "strategies": [
+      {
+        "index": "assign_strategy_001",
+        "summary": "Bipartite matching with eligibility restrictions. Use when matching two disjoint sets one-to-one, each entity can be matched at most once, and only pre-specified pairs are allowed.",
+        "procedure": [
+          "Define two disjoint entity sets for the bipartite matching.",
+          "Specify eligible pairs, either as an explicit list or a binary parameter for all possible pairs.",
+          "Define binary decision variables for each eligible pair (or all pairs).",
+          "Add constraints limiting each entity in the first set to at most one match.",
+          "Add constraints limiting each entity in the second set to at most one match.",
+          "Formulate objective to maximize the total count or weighted sum of selected matches."
+        ]
+      },
+      {
+        "index": "assign_strategy_002",
+        "summary": "Capacity-constrained bin packing (discrete many-to-one assignment). Use when indivisible items with numerical sizes must be assigned to capacity-limited resources, each incurring a fixed activation cost if used, and the objective is to minimize total activation cost or number of used resources.",
+        "procedure": [
+          "Define sets of items and candidate resources, with resource count sufficient for worst-case assignment.",
+          "Specify item sizes, resource capacities, and fixed activation costs per resource.",
+          "Create binary assignment variables (item to resource) and binary activation variables per resource.",
+          "Minimize sum of activation costs multiplied by activation variables.",
+          "Constrain each item to be assigned to exactly one resource.",
+          "For each resource, constrain total size of assigned items ≤ capacity × activation variable."
+        ]
+      },
+      {
+        "index": "assign_strategy_003",
+        "summary": "Multi-attribute assignment with eligibility restrictions and unmet demand penalties. Use when each demand slot has fixed required quantity, supply entities have binary eligibility per slot, each entity has a maximum assignment limit (often 1), and unmet demand incurs linear penalties.",
+        "procedure": [
+          "Define sets for supply entities and multi-attribute demand slots.",
+          "Specify parameters: slot demand quantities, binary eligibility matrix, assignment costs, unmet penalty costs, and per-entity assignment limit.",
+          "Create binary assignment variables and integer unmet demand variables.",
+          "Minimize total assignment cost plus total unmet penalty cost.",
+          "For each slot: assignments + unmet = required demand.",
+          "For each entity: total assignments ≤ entity limit.",
+          "For each entity-slot pair: assignment ≤ eligibility indicator."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "assign_exp_001",
+        "trigger": "When maximizing assignment count with eligibility constraints, summing over all possible pairs relies entirely on separate constraints to prevent invalid selections.",
+        "guidance": "Define the objective function to sum assignment variables only over the pre-specified set of valid entity pairs."
+      },
+      {
+        "index": "assign_exp_002",
+        "trigger": "When each employee can have at most one total assignment across all shifts, per-shift limits are insufficient and violate the global restriction.",
+        "guidance": "Add a single constraint per employee limiting the sum of all their assignment variables across all dimensions to ≤ 1."
+      },
+      {
+        "index": "assign_exp_003",
+        "trigger": "When entities can remain unassigned in an assignment problem, equality constraints force invalid assignments.",
+        "guidance": "Use inequality constraints (≤ 1) instead of equality (= 1) for assignment sums per entity."
+      },
+      {
+        "index": "assign_exp_004",
+        "trigger": "Avoid hardcoding skill requirements in eligibility constraints to maintain model flexibility when task skill needs change.",
+        "guidance": "Define a parameter for each task's required skill and reference it in the eligibility constraint."
+      },
+      {
+        "index": "assign_exp_005",
+        "trigger": "When modeling exact demand with penalty variables for shortages, avoid inequality constraints that permit overstaffing.",
+        "guidance": "Use an equality constraint: sum of assignments plus unfulfilled positions equals demand."
+      },
+      {
+        "index": "assign_exp_006",
+        "trigger": "When assignment problems have explicit allowed/eligible pairs between entity sets, restrict variables to those pairs.",
+        "guidance": "Define binary assignment variables only for allowed pairs and sum exclusively over these pairs in capacity constraints."
+      },
+      {
+        "index": "assign_exp_007",
+        "trigger": "When a problem explicitly requires matching a specific attribute like skill in assignments, include that dimension in indices even if current data has only one value.",
+        "guidance": "Explicitly include the attribute dimension as an index in all relevant parameters and decision variables from the start."
+      }
+    ]
+  },
+  "selection": {
+    "strategies": [
+      {
+        "index": "select_strategy_001",
+        "summary": "Pairwise interaction subset selection. Use when the objective aggregates pairwise values (benefits, costs, distances) that are only realized if both entities in a pair are selected, and the selected subset must meet a cardinality requirement (exact, min, or max).",
+        "procedure": [
+          "Define candidate entities, valid entity pairs, pairwise values, and subset constraints like cardinality limits.",
+          "Create binary selection variables for each entity and auxiliary binary variables for each pair if linearizing.",
+          "Add linearization constraints linking each pair variable to the selection of both its entities.",
+          "Enforce subset governance constraints, primarily the cardinality requirement on selected entities.",
+          "Formulate the objective to maximize/minimize the sum of pairwise values for selected pairs.",
+          "Set all selection and pair activation variables to binary."
+        ]
+      },
+      {
+        "index": "select_strategy_002",
+        "summary": "Budget-constrained maximum coverage selection. Use when selecting items with fixed costs to cover demand points with weighted values, a binary coverage mapping defines eligibility, and total selection cost must not exceed a fixed budget.",
+        "procedure": [
+          "Define sets for candidate items (with costs) and demand points (with values), and the binary coverage mapping between them.",
+          "Create binary variables for item selection and for demand point coverage status.",
+          "Maximize the sum of values for covered demand points.",
+          "Constrain total selection cost to be within the fixed budget.",
+          "Link coverage variables: a demand point is covered only if at least one eligible item is selected.",
+          "Optionally, enforce mandatory coverage for specific demand points."
+        ]
+      },
+      {
+        "index": "select_strategy_003",
+        "summary": "Capacitated fixed-charge facility location. Use when selecting facilities with opening costs and capacity limits to serve mandatory demand, with shipments only allowed from opened facilities, minimizing fixed plus variable shipping costs.",
+        "procedure": [
+          "Define sets for candidate facilities and demand points with their parameters.",
+          "Create binary variables for facility opening and continuous variables for shipments.",
+          "Minimize sum of fixed opening costs and variable shipping costs.",
+          "For each demand point, ensure total shipments equal its demand.",
+          "For each facility, limit total shipments by capacity times opening indicator.",
+          "Enforce non-negativity for shipments and binary constraints for opening decisions."
+        ]
+      },
+      {
+        "index": "select_strategy_004",
+        "summary": "Binary knapsack selection with single resource capacity. Use when selecting indivisible items with individual values and resource consumptions, subject to a hard total resource limit.",
+        "procedure": [
+          "Define the set of candidate items, their values/costs, and their resource consumptions.",
+          "Introduce binary decision variables for each item's selection.",
+          "Formulate objective to maximize total value or minimize total cost of selected items.",
+          "Add a single constraint: total resource consumption of selected items ≤ capacity.",
+          "Enforce binary domains for all selection variables."
+        ]
+      },
+      {
+        "index": "select_strategy_005",
+        "summary": "Set covering selection with fixed costs and predefined coverage eligibility. Use when each requirement must be satisfied by a minimum number of selected candidates from a binary pool, and coverage relationships are known in advance.",
+        "procedure": [
+          "Define sets: mandatory requirements and binary-selectable candidate entities.",
+          "Specify candidate costs, coverage eligibility matrix, and minimum required coverage count per requirement.",
+          "Create binary decision variables for candidate selection.",
+          "Minimize total selection cost as the objective.",
+          "Add constraints ensuring each requirement's eligible selected candidates meet its minimum coverage count.",
+          "Enforce all decision variables as binary."
+        ]
+      },
+      {
+        "index": "select_strategy_006",
+        "summary": "Multi-dimensional knapsack selection with bounded item quantities. Use when selecting integer quantities of items with per-unit values, each consuming multiple shared resources, subject to per-item quantity limits and per-resource capacity constraints.",
+        "procedure": [
+          "Define sets for items and shared capacity resources.",
+          "Specify per-unit values, item quantity limits, resource capacities, and consumption coefficients.",
+          "Create non-negative integer variables for item quantities.",
+          "Maximize total sum of (value × quantity) across items.",
+          "Enforce per-item upper bound constraints on quantities.",
+          "Enforce per-resource capacity constraints on total consumption."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "select_exp_001",
+        "trigger": "When modeling maximum coverage with overlapping facility service areas, directly summing element weights per facility double-counts shared coverage, distorting the objective.",
+        "guidance": "Define binary coverage variables for each element, constrain them to require at least one covering facility, and use these variables in the objective."
+      },
+      {
+        "index": "select_exp_002",
+        "trigger": "When pair-wise benefits are asymmetric, restricting variables to unordered i<j pairs excludes reverse direction benefits, causing objective undercount.",
+        "guidance": "Define variables for all ordered pairs (i,j) and sum benefits over both directions in the objective."
+      },
+      {
+        "index": "select_exp_003",
+        "trigger": "When modeling pairwise selection benefits, incomplete constraints on interaction variables cause incorrect benefit counting, especially with negative benefits.",
+        "guidance": "For each pair, enforce y_ij ≤ x_i, y_ij ≤ x_j, and y_ij ≥ x_i + x_j - 1 to ensure y_ij = 1 only if both items are selected."
+      },
+      {
+        "index": "select_exp_004",
+        "trigger": "When modeling facility location with binary open variables and flow variables, non-negativity alone cannot prevent shipments from closed facilities.",
+        "guidance": "Multiply the facility's capacity by its binary open variable in the capacity constraint to enforce zero shipments when closed."
+      },
+      {
+        "index": "select_exp_005",
+        "trigger": "When items must be fully selected or excluded without partial or multiple selections, non-binary variables can allow invalid solutions.",
+        "guidance": "Define a binary decision variable for each item and enforce the binary domain constraint."
+      },
+      {
+        "index": "select_exp_006",
+        "trigger": "When maximizing coverage under a fixed budget without mandatory full coverage, avoid set cover formulations that enforce full coverage by default.",
+        "guidance": "Model as a budgeted maximum coverage problem using constraints that allow partial coverage without mandatory full coverage rules."
+      },
+      {
+        "index": "select_exp_007",
+        "trigger": "In set covering problems, use lower bound ≥1 constraints to ensure each requirement is met, avoiding both unmet needs and unnecessary costly selections.",
+        "guidance": "For each requirement, constrain the sum of relevant binary selection variables to be at least 1."
+      },
+      {
+        "index": "select_exp_008",
+        "trigger": "When modeling symmetric pairwise relationships, avoid ordered pairs to prevent duplicate constraints and conflicting parameter values.",
+        "guidance": "Define the pair set as unordered (e.g., enforce i < j) to include each symmetric pair exactly once with a consistent parameter."
+      },
+      {
+        "index": "select_exp_009",
+        "trigger": "Selected entities must meet structural validity conditions to be usable; omitting these constraints allows selection of unusable entities.",
+        "guidance": "Add explicit constraints to enforce required validity conditions for all selected entities, or pre-filter candidates to only valid ones."
+      },
+      {
+        "index": "select_exp_010",
+        "trigger": "Recognize set covering structure when selecting items to cover all required elements with minimum cost, to avoid ad-hoc modeling errors.",
+        "guidance": "Use binary selection variables for items and constraints requiring each element to be covered by at least one selected item."
+      },
+      {
+        "index": "select_exp_011",
+        "trigger": "When total assigned demand must exactly match total available resources, using a ≤ inequality can cause unmet demand or underutilization.",
+        "guidance": "Formulate the demand-resource balance constraint as an equality instead of a one-sided inequality."
+      },
+      {
+        "index": "select_exp_012",
+        "trigger": "When a problem states the total number of available candidates but does not specify how many must be selected, avoid adding a spurious total selection constraint.",
+        "guidance": "Only impose a total selection count constraint if the problem explicitly requires a minimum, maximum, or exact number of selections."
+      },
+      {
+        "index": "select_exp_013",
+        "trigger": "When unordered entity pairs have distinct weights for both ordered directions and the objective sums active pairwise connections, each selected pair contributes both directional weights.",
+        "guidance": "Sum both ordered weights per unordered pair in the objective, or use ordered variables with symmetry constraints to ensure consistent activation."
+      },
+      {
+        "index": "select_exp_014",
+        "trigger": "When tasks require coverage by multiple resources, standard set covering constraints become insufficient.",
+        "guidance": "Define a minimum coverage parameter for each task and enforce sum of selected resources ≥ that minimum."
+      },
+      {
+        "index": "select_exp_015",
+        "trigger": "When summing per-element terms for a total objective, avoid placing 'for all' quantifiers after the sum, as this incorrectly reinterprets it as per-element optimization instead of an aggregated total.",
+        "guidance": "Place the index set directly in the sum notation and reserve 'for all' quantifiers only for constraints that apply to individual elements."
+      },
+      {
+        "index": "select_exp_016",
+        "trigger": "When the problem provides explicit numerical values for model parameters, omitting them creates an incomplete, unsolvable model.",
+        "guidance": "Explicitly list all provided numerical values for each parameter in the model's parameters section."
+      }
+    ]
+  },
+  "flow": {
+    "strategies": [
+      {
+        "index": "flow_strategy_001",
+        "summary": "Single-commodity capacitated minimum cost flow. Use when you have a directed network with node-level net flow requirements (supply/demand/transshipment), per-unit flow costs and capacities on edges, and optional node handling capacity limits.",
+        "procedure": [
+          "Define nodes and directed arcs, selecting a sign convention for net flow requirements (supply or demand convention).",
+          "Specify node net flow parameters, edge costs and capacities, and any node capacity limits.",
+          "Create non-negative continuous flow variables for each directed edge.",
+          "Formulate a linear objective to minimize total flow cost.",
+          "Enforce flow balance constraints at each node per the chosen sign convention.",
+          "Apply edge capacity constraints and any node-level capacity limits."
+        ]
+      },
+      {
+        "index": "flow_strategy_002",
+        "summary": "Binary single-commodity minimum cost flow. Use when flow is indivisible (binary arc usage), nodes have fixed net supply/demand requirements, and the objective minimizes total cost of activated arcs.",
+        "procedure": [
+          "Define nodes and directed arcs, classifying nodes as supply, demand, or transshipment with a consistent net flow sign convention.",
+          "Assign a fixed usage cost to each directed arc.",
+          "Create binary decision variables for each arc, indicating activation.",
+          "Formulate the objective to minimize total cost of activated arcs.",
+          "Enforce flow balance constraints at each node per the chosen sign convention.",
+          "Restrict all arc variables to binary values."
+        ]
+      },
+      {
+        "index": "flow_strategy_003",
+        "summary": "Single-commodity source-sink flow routing. Use when you have exactly one supply source, one demand sink, flow conservation at intermediate nodes, and need to minimize total flow cost (continuous or binary arc usage).",
+        "procedure": [
+          "Define network nodes (source, sink, intermediates) and directed arcs with per-unit or per-usage costs.",
+          "Create continuous flow variables for divisible flow or binary variables for indivisible path selection.",
+          "Minimize sum of arc cost multiplied by flow/usage variable across all arcs.",
+          "Enforce flow balance: source net outflow equals supply, sink net inflow equals demand, intermediate inflow equals outflow.",
+          "Add optional capacity limits on arcs or nodes as required.",
+          "Set variable domains: non-negative continuous or binary based on flow divisibility."
+        ]
+      },
+      {
+        "index": "flow_strategy_004",
+        "summary": "Bipartite single-commodity flow with binary edge activation. Use when supply nodes have capacities, demand nodes have requirements, each demand must be served by a minimum number of distinct suppliers, and active edges require minimum shipment thresholds.",
+        "procedure": [
+          "Define supply and demand node sets with capacities/requirements, per-unit flow costs/values, minimum shipment thresholds, and minimum supplier counts per demand.",
+          "Create continuous flow variables for each supply-demand pair and binary activation variables for each pair.",
+          "Minimize total flow cost or maximize total flow value as objective.",
+          "Enforce supply capacity limits and demand requirement satisfaction constraints.",
+          "Link flow and activation variables: zero flow if inactive, at least minimum threshold if active.",
+          "Require each demand's sum of activation variables meets minimum supplier count."
+        ]
+      },
+      {
+        "index": "flow_strategy_005",
+        "summary": "Fixed-charge network flow MILP with binary arc activation. Use when flow incurs a fixed cost if an arc is used, optional variable flow costs and capacities, and flow conservation must be satisfied across nodes with net supply/demand.",
+        "procedure": [
+          "Define node sets and potential directed arcs. Choose a sign convention for node net flow requirements (supply/demand).",
+          "Specify parameters: fixed activation cost, variable flow cost (can be zero), and capacity (or large M) for each arc.",
+          "Define binary arc activation variables and continuous, non-negative flow variables for each arc.",
+          "Formulate objective to minimize total fixed plus variable flow costs.",
+          "Enforce flow conservation at each node according to the chosen sign convention.",
+          "Add coupling constraints: flow on an arc ≤ (arc capacity) * (activation variable)."
+        ]
+      },
+      {
+        "index": "flow_strategy_006",
+        "summary": "Multi-commodity capacity-bearing resource flow with arc service demands. Use when multiple resource types with distinct per-unit capacities must be routed to meet minimum service demands on each arc, and resources may be storable/reusable across periods.",
+        "procedure": [
+          "Define sets for resource types, network nodes, and time periods if multi-period.",
+          "Specify parameters: per-resource flow cost and capacity, total supply per type, minimum service demand per arc, and any flow limits or deployment restrictions.",
+          "Define non-negative flow variables for each resource type on each arc and idle/inventory variables for carry-over.",
+          "Formulate objective to minimize total flow cost, excluding idle resource costs.",
+          "Enforce core constraints: supply limits, arc service demand fulfillment, and flow balance with inventory carry-over.",
+          "Add supplementary constraints like route restrictions or maximum idle limits as needed."
+        ]
+      },
+      {
+        "index": "flow_strategy_007",
+        "summary": "Multi-commodity minimum cost flow. Use when routing multiple distinct goods through a network with per-commodity supply/demand at nodes, flow conservation per commodity, and optional joint or per-commodity capacity limits on edges.",
+        "procedure": [
+          "Define sets for commodities, network nodes, and directed edges.",
+          "Specify per-commodity costs, node net flows (or origin supplies/destination demands), and edge capacities.",
+          "Create non-negative flow variables for each commodity on each edge.",
+          "Minimize total cost (or maximize profit) summed over all commodity flows.",
+          "Enforce per-node, per-commodity flow balance (inflow - outflow = net flow).",
+          "Apply joint and/or per-commodity edge capacity constraints as required."
+        ]
+      },
+      {
+        "index": "flow_strategy_008",
+        "summary": "Bipartite minimum-cost flow between supply and demand nodes. Use when resources flow directly from origins to destinations with per-unit transfer costs, supply limits, demand requirements, and optional per-pair capacity limits.",
+        "procedure": [
+          "Define two disjoint node sets: supply origins and demand destinations.",
+          "Specify per-origin supply (exact or maximum), per-destination demand (exact or minimum), per-pair unit costs, and optional per-pair capacities.",
+          "Define non-negative flow variables (continuous or integer) for each origin-destination pair.",
+          "Formulate objective to minimize total transfer cost.",
+          "Add constraints: demand satisfaction (inflow equals or exceeds requirement) and supply balance (outflow equals or does not exceed availability).",
+          "Add per-pair capacity constraints if applicable."
+        ]
+      },
+      {
+        "index": "flow_strategy_009",
+        "summary": "Multi-commodity flow through a three-tier network with selectable intermediate facilities. Use when each demand node must be single-sourced from one active facility, and active facilities have minimum and maximum throughput limits.",
+        "procedure": [
+          "Define sets for supply nodes, facilities, demand nodes, and commodities, along with capacities, demands, costs, and facility throughput bounds.",
+          "Create continuous flow variables for each commodity path and binary variables for facility selection and demand-to-facility assignment.",
+          "Minimize total cost from flow, facility activation, and assignment.",
+          "Enforce supply capacity and demand satisfaction constraints for each commodity.",
+          "Link variables: a demand node is assigned to exactly one selected facility, and flow to a demand node is only allowed via its assigned facility.",
+          "Constrain total flow through each selected facility to be within its minimum and maximum throughput limits."
+        ]
+      },
+      {
+        "index": "flow_strategy_010",
+        "summary": "Multi-commodity flow with discrete capacity expansion. Use when arc capacity is determined by installing integer units (e.g., facilities) with fixed costs, and the objective combines flow transportation costs with fixed installation costs.",
+        "procedure": [
+          "Define network sets, per-commodity net supply/demand, and costs for flow and facility installation.",
+          "Create continuous flow variables and integer variables for installed facility count per arc.",
+          "Minimize total cost: sum of flow transportation costs plus fixed facility installation costs.",
+          "Enforce flow conservation for each commodity at every node.",
+          "Constrain total flow on each arc by installed facility count multiplied by unit capacity."
+        ]
+      },
+      {
+        "index": "flow_strategy_011",
+        "summary": "Multi-commodity transportation over a bipartite network with per-commodity supply/demand. Use when multiple distinct commodities flow from origins to destinations, each with its own supply/demand limits, and edges may have shared total capacity constraints across all commodities.",
+        "procedure": [
+          "Define sets: commodities, supply origins, demand destinations, and allowed origin-destination edges.",
+          "Specify parameters: per-commodity supply/demand, per-commodity unit transportation costs, and optional shared edge capacity limits.",
+          "Create non-negative continuous variables for each commodity's flow on each allowed edge.",
+          "Minimize total cost: sum over all edges and commodities of unit cost times flow.",
+          "Add supply constraints: per origin and commodity, total outflow ≤ available supply.",
+          "Add demand constraints: per destination and commodity, total inflow ≥ required demand.",
+          "Add edge capacity constraints (if applicable): per edge, sum of all commodity flows ≤ shared capacity limit."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "flow_exp_001",
+        "trigger": "When using a net supply parameter (positive for supply, negative for demand) in network flow constraints, ensure the balance equation direction matches the parameter's definition.",
+        "guidance": "Set each node's flow balance as (total outflow minus total inflow) equals the node's net supply parameter."
+      },
+      {
+        "index": "flow_exp_002",
+        "trigger": "When flow parameters are only defined for distinct node pairs, exclude self-loops to prevent invalid resource movement and constraint inflation.",
+        "guidance": "Restrict flow variables to i ≠ j pairs or add explicit constraints setting all self-loop flows to zero."
+      },
+      {
+        "index": "flow_exp_003",
+        "trigger": "When problem requires full supply utilization and exact demand satisfaction for each commodity, inequality constraints permit unused supply or over-shipping.",
+        "guidance": "Define both supply and demand constraints as equalities to enforce mandatory per-origin and per-destination conditions."
+      },
+      {
+        "index": "flow_exp_004",
+        "trigger": "When modeling flow networks with transshipment nodes, partial flow balance constraints fail to conserve flow at intermediate nodes, allowing unaccounted flow gains/losses and ignoring cost-saving routes.",
+        "guidance": "For every node, enforce a flow balance constraint where total outflow minus total inflow equals the node's net supply (supply minus demand)."
+      },
+      {
+        "index": "flow_exp_005",
+        "trigger": "When decision variables represent physical shipment quantities in flow problems, they cannot be negative; omitting non-negativity constraints allows invalid negative values.",
+        "guidance": "Explicitly add non-negativity constraints requiring all shipment decision variables to be ≥ 0."
+      },
+      {
+        "index": "flow_exp_006",
+        "trigger": "When multiple products share a single arc capacity, applying constraints per product individually allows total flow to exceed the allowed maximum.",
+        "guidance": "Formulate the arc capacity constraint as the sum of flow quantities across all products on that origin-destination pair."
+      },
+      {
+        "index": "flow_exp_007",
+        "trigger": "Network flow problems requiring binary arc usage decisions need explicit binary constraints to prevent invalid fractional flows.",
+        "guidance": "Add explicit binary domain constraints (0 or 1) to all arc usage decision variables in the network."
+      },
+      {
+        "index": "flow_exp_008",
+        "trigger": "When linking continuous flow variables to binary selection variables, avoid generic large M values that weaken MILP relaxation and cause numerical issues.",
+        "guidance": "Use the tightest valid problem-specific upper bound for the flow variable as the coefficient in the linking constraint."
+      },
+      {
+        "index": "flow_exp_009",
+        "trigger": "When demand must be satisfied exactly without excess shipments, use equality constraints instead of lower bounds.",
+        "guidance": "Set each demand constraint as an equality where total incoming shipments equal the exact required quantity."
+      },
+      {
+        "index": "flow_exp_010",
+        "trigger": "When modeling flow networks with designated source, sink, and intermediate nodes, undifferentiated balance constraints fail to enforce valid flow paths.",
+        "guidance": "Write separate constraints: source outflow equals supply, sink inflow equals demand, and intermediate inflow equals outflow."
+      },
+      {
+        "index": "flow_exp_011",
+        "trigger": "When using net supply parameters in network flow problems, ensure flow balance equations correctly subtract inflows from outflows and exclude self-transport routes.",
+        "guidance": "Define flow balance as (outflows from node i) minus (inflows to node i) equals net supply, excluding all i=j flow variables."
+      },
+      {
+        "index": "flow_exp_012",
+        "trigger": "When individual origin-destination pairs have explicit shipping capacity limits, omitting these per-route upper bounds allows solutions that violate logistical restrictions.",
+        "guidance": "Add a constraint x_ij ≤ U_ij for each origin-destination pair (i,j) with a stated upper limit U_ij on flow volume."
+      },
+      {
+        "index": "flow_exp_013",
+        "trigger": "When modeling node handling capacity limits, use only incoming flow to avoid double-counting transshipped units that are processed once.",
+        "guidance": "Formulate node capacity constraints as the sum of all incoming flow to the node being ≤ its maximum capacity."
+      },
+      {
+        "index": "flow_exp_014",
+        "trigger": "When nodes have maximum sendable surplus or minimum required demand, avoid equality flow balance constraints that force exact net flow.",
+        "guidance": "Use inequality constraints: net outflow ≤ supply (positive for surplus) and net inflow ≥ demand (negative for demand)."
+      },
+      {
+        "index": "flow_exp_015",
+        "trigger": "When employee time supply, project time demand, per-pair costs, and hour limits exist, structure matches a minimum-cost transportation flow problem.",
+        "guidance": "Model as transportation flow with employees as supply nodes, projects as demand nodes, and per-edge capacity constraints for hour limits."
+      },
+      {
+        "index": "flow_exp_016",
+        "trigger": "When a flow or transportation problem provides an explicit Links list and cost/capacity arrays only for those links, city indices may not match the array dimensions.",
+        "guidance": "Do not index link parameters by full city-to-city matrix positions unless the data is explicitly a full |Cities| x |Cities| matrix. If Links is an explicit sparse arc list, build dictionaries keyed by (origin, destination, product), or index costs and capacities by the link position in Links. Create flow variables only for arcs in Links, and apply per-product and joint capacities using the same link keys."
+      }
+    ]
+  },
+  "time_planning": {
+    "strategies": [
+      {
+        "index": "timeplan_strategy_001",
+        "summary": "Multi-period production-inventory lot-sizing with setup costs. Use when planning sequential time periods with inventory carryover, fixed setup costs per item per period, shared resource capacity, and mandatory demand fulfillment.",
+        "procedure": [
+          "Define sets for items and time periods, and parameters for demand, costs, capacities, and optional backlogging.",
+          "Create production quantity, inventory, and binary setup variables per item per period.",
+          "Formulate objective to minimize total production, setup, and holding costs (or maximize profit).",
+          "Write inventory balance constraints linking prior inventory, production, demand, and ending inventory.",
+          "Add big-M constraints to link production quantities to binary setup variables.",
+          "Enforce shared resource capacity constraints per period and variable non-negativity."
+        ]
+      },
+      {
+        "index": "timeplan_strategy_002",
+        "summary": "Multi-period discrete asset commitment with state transitions. Use when planning sequential integer counts of active assets (e.g., machines, generators) with costs for operation, startup, and optional shutdown, and constraints linking active counts between consecutive periods.",
+        "procedure": [
+          "Define sets for time periods and asset types, with parameters for costs, demands, capacity requirements, output bounds, and initial operating state.",
+          "Create integer variables for active asset counts per period and type, output variables, and integer variables for startups and optional shutdowns.",
+          "Formulate objective to minimize total cost (fixed operation, variable output, startup, optional shutdown) or maximize net profit.",
+          "Add per-period constraints for demand satisfaction, active asset limits, output bounds, and capacity/reserve requirements.",
+          "Link periods: enforce active count in period t equals prior count plus startups minus shutdowns (if allowed), with transition limits.",
+          "Enforce variable non-negativity and integrality for all discrete decision variables."
+        ]
+      },
+      {
+        "index": "timeplan_strategy_003",
+        "summary": "Multi-period production-inventory-sales planning with inventory carry-over and shared resources. Use when decisions across sequential time periods are linked by inventory flow balance, production consumes shared limited resources each period, and sales/inventory have period-specific limits.",
+        "procedure": [
+          "Define sets for time periods, products, and shared resources, along with their parameters (costs, capacities, rates, limits).",
+          "Declare non-negative decision variables for production, sales, and end-of-period inventory per product per period.",
+          "Formulate objective to maximize net profit (revenue minus costs) or minimize total operational costs.",
+          "Implement inventory flow balance constraints linking consecutive periods via carry-over.",
+          "Add per-period resource capacity constraints summing consumption across all products.",
+          "Enforce per-period sales limits and inventory storage capacity limits."
+        ]
+      },
+      {
+        "index": "timeplan_strategy_004",
+        "summary": "Multi-period deployable resource allocation with state balance. Use when resources have types and locations, decisions span discrete time periods with carry-over idle counts, and demand must be met each period via deployments subject to capacity and availability limits.",
+        "procedure": [
+          "Define sets for resource types, tasks/locations, and time periods, with parameters for capacity, cost, demand, limits, and initial availability.",
+          "Create integer variables for deployed resource counts per task and period, and idle resource counts per location and period.",
+          "Formulate objective to minimize total deployment cost or maximize total profit.",
+          "Add constraints ensuring deployed resource capacity meets each task's demand in each period.",
+          "Enforce inter-temporal balance: idle resources at a location next period equal current idle plus incoming minus outgoing deployments.",
+          "Apply auxiliary limits like maximum deployments per combination and total resource availability per type."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "timeplan_exp_001",
+        "trigger": "For multi-period inventory balance constraints, use a sources-equals-uses structure to directly mirror physical flow and reduce sign/index errors.",
+        "guidance": "Formulate inventory balance as beginning inventory + incoming orders equals period demand + ending inventory, without rearranging."
+      },
+      {
+        "index": "timeplan_exp_002",
+        "trigger": "In multi-period inventory-backlog models, previous backlog increases current demand while current backlog reduces required supply; misplacing time indices causes incorrect flow accounting.",
+        "guidance": "Place previous backlog on the demand side and current backlog on the supply side of the period balance equation."
+      },
+      {
+        "index": "timeplan_exp_003",
+        "trigger": "When initial inventory parameters are defined for multi-period models, omitting them from the first period's balance constraint breaks the flow logic and causes calculation errors if initial stock is non-zero.",
+        "guidance": "Include the initial inventory parameter directly in the first period's inventory balance equation to properly link the parameter to the model's flow logic."
+      },
+      {
+        "index": "timeplan_exp_004",
+        "trigger": "In finite horizon planning with prohibited terminal carry-over states, constraints on final period outputs are not automatic and can be missed if buried in notes.",
+        "guidance": "Explicitly define terminal state constraints (e.g., I_T=0) as separate, standalone constraints in the model."
+      },
+      {
+        "index": "timeplan_exp_005",
+        "trigger": "When using big M for setup activation with explicit per-item production limits, avoid loose resource-derived M values that weaken LP relaxation or allow invalid solutions.",
+        "guidance": "Set the big M parameter directly to the explicit per-item per-period maximum production quantity in the setup constraint."
+      },
+      {
+        "index": "timeplan_exp_006",
+        "trigger": "When modeling multi-period asset startups limited by prior period offline assets, ensure startups only apply to assets not operating previously to avoid infeasible startup counts.",
+        "guidance": "Constrain startups for t>0 by maximum assets minus prior period operating assets, and for t=0 by maximum assets, linking operating counts to startups."
+      },
+      {
+        "index": "timeplan_exp_007",
+        "trigger": "When multi-period planning problems specify different inventory balance rules for the first period versus later periods, avoid a single general constraint requiring a dummy initial variable.",
+        "guidance": "Create two separate constraint sets: one for the first period following initial rules, and another for subsequent periods incorporating prior period inventory."
+      },
+      {
+        "index": "timeplan_exp_008",
+        "trigger": "In multi-period startup logic, the initial period lacks prior operational state, requiring explicit handling to avoid invalid active counts without startups.",
+        "guidance": "Apply startup transition constraints to all periods including the initial one, setting pre-initial active count to zero to enforce initial startup requirements."
+      },
+      {
+        "index": "timeplan_exp_009",
+        "trigger": "When linking binary order variables to quantity variables via big-M constraints, use the problem's explicit maximum order quantity as M.",
+        "guidance": "Replace generic large M values with the specified maximum order quantity to tighten the LP relaxation and improve solve time."
+      },
+      {
+        "index": "timeplan_exp_010",
+        "trigger": "When cumulative demand values are provided instead of per-period demand, directly using them in inventory balance constraints causes incorrect inventory tracking and cost calculations.",
+        "guidance": "Compute per-period demand as the difference between consecutive cumulative demands, then use these derived values in your inventory balance constraints."
+      },
+      {
+        "index": "timeplan_exp_011",
+        "trigger": "When a problem specifies exact end-of-horizon inventory targets, using a ≥ constraint allows excess inventory, incurring unnecessary holding costs and violating the exact requirement.",
+        "guidance": "Formulate the end-of-horizon inventory constraint as an equality, not a lower-bound inequality, to meet the exact target."
+      },
+      {
+        "index": "timeplan_exp_012",
+        "trigger": "When modeling multi-period inventory with required zero initial and final inventory, misindexing boundaries leads to incorrect constraints.",
+        "guidance": "Map time periods to consecutive indices, set pre-first-period inventory to 0, and set end-of-last-period inventory to 0."
+      },
+      {
+        "index": "timeplan_exp_013",
+        "trigger": "When a problem requires minimum total maximum possible output per period as a reserve capacity requirement, use generator capacity not actual output.",
+        "guidance": "Formulate the constraint as sum of (maximum output capacity per generator type × number active generators) ≥ required total maximum output per period."
+      },
+      {
+        "index": "timeplan_exp_014",
+        "trigger": "When modeling multi-period inventory with specified initial or ending inventory requirements, mentioning these boundaries only in descriptive notes does not formally enforce them.",
+        "guidance": "Add explicit, separate constraints for required initial and final inventory values to ensure formal enforcement."
+      }
+    ]
+  },
+  "routing": {
+    "strategies": [
+      {
+        "index": "route_strategy_001",
+        "summary": "Miller-Tucker-Zemlin (MTZ) formulation for single closed-tour routing. Use when constructing a minimum-cost closed loop visiting each node exactly once, requiring polynomial-sized subtour elimination via auxiliary position variables.",
+        "procedure": [
+          "Define node set and pairwise travel costs.",
+          "Create binary edge selection variables and auxiliary node position variables.",
+          "Minimize total cost as sum of selected edge costs.",
+          "Enforce each node has exactly one incoming and one outgoing edge.",
+          "Add MTZ constraints: if edge i→j is selected, position j > position i.",
+          "Set variable domains: binary for edges, bounded integer/continuous for positions."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "route_exp_001",
+        "trigger": "When using MTZ constraints for TSP subtour elimination, including arcs from/to the fixed starting city creates an infeasible position contradiction.",
+        "guidance": "Exclude all arcs involving the fixed starting city from the MTZ constraints and fix the start city's position to the minimum sequence value."
+      },
+      {
+        "index": "route_exp_002",
+        "trigger": "When using MTZ subtour elimination for TSP, correctly bound auxiliary position variables to enforce visit sequence and prevent subtours.",
+        "guidance": "Fix the starting node's position to 0 and bound all other nodes' positions between 1 and n-1."
+      },
+      {
+        "index": "route_exp_003",
+        "trigger": "When binary arc variables are defined only for distinct node pairs, avoid adding explicit self-loop constraints.",
+        "guidance": "Omit explicit x_ii = 0 constraints since those arcs are already excluded from the variable set."
+      },
+      {
+        "index": "route_exp_004",
+        "trigger": "When defining binary arc variables for node-to-node travel in tour routing, exclude self-loops (i=j) because they create unenforced 1-node subtours that satisfy flow constraints but violate the continuous tour requirement.",
+        "guidance": "Restrict arc variables to distinct node pairs (i≠j) in their definition and exclude self-loops from all objective and constraint sums involving arc variables."
+      },
+      {
+        "index": "route_exp_005",
+        "trigger": "When using MTZ subtour elimination constraints with position variables, incorrect coefficient values allow invalid subtours to form.",
+        "guidance": "Set MTZ constraint coefficients using the total number of cities as the multiplier and n-1 as the right-hand side value."
+      },
+      {
+        "index": "route_exp_006",
+        "trigger": "In TSP with position-based subtour elimination, fixing depot position and imposing lower bound 1 on non-depot positions excludes valid tours.",
+        "guidance": "Keep depot position unbounded and set non-depot bounds as 0 to n-1 without adding extra lower bounds."
+      },
+      {
+        "index": "route_exp_007",
+        "trigger": "When using MTZ subtour constraints for cyclic routing problems without a fixed start, avoid fixing the root node's position variable as it adds an unnecessary constraint.",
+        "guidance": "Instead of fixing the root, enforce uniform bounds (0 to n-1) for all position variables in the MTZ formulation."
+      },
+      {
+        "index": "route_exp_008",
+        "trigger": "MTZ subtour elimination requires integer positional variables because continuous variables permit non-integer values that satisfy constraint form but allow invalid subtours.",
+        "guidance": "Define MTZ positional sequence variables as integer variables with bounds matching the number of cities."
+      }
+    ]
+  },
+  "scheduling": {
+    "strategies": [
+      {
+        "index": "sched_strategy_001",
+        "summary": "Single-resource earliness-tardiness scheduling with sequence-dependent separation. Use when jobs have distinct asymmetric penalties for early/late completion, hard time windows, and pairwise minimum gaps that depend on which job precedes the other.",
+        "procedure": [
+          "Define job parameters: target time, time window bounds, asymmetric early/late penalty rates, and pairwise sequence-dependent separation times.",
+          "Create continuous completion time variables, non-negative early/late deviation variables, and binary precedence variables for each job pair.",
+          "Minimize total penalty cost as sum of early and late deviations weighted by their respective rates.",
+          "Constrain each completion time within its hard time window and link deviation variables to target-actual time differences.",
+          "Enforce sequence-dependent separation using big-M constraints conditional on binary precedence variables.",
+          "Ensure exactly one precedence direction per job pair to prevent simultaneous processing."
+        ]
+      },
+      {
+        "index": "sched_strategy_002",
+        "summary": "Position-indexed permutation flow shop scheduling. Use when all jobs follow an identical machine sequence, a single global job order applies to all machines, and you must enforce both intra-job machine precedence and inter-job same-machine precedence.",
+        "procedure": [
+          "Define sets for jobs, machines, and sequence positions, plus processing time parameters.",
+          "Create binary job-to-position assignment variables and continuous start time variables per position per machine.",
+          "Enforce permutation constraints: each job to one position, each position to one job.",
+          "Link start and completion times using processing times of assigned jobs.",
+          "Add intra-job precedence: a job's start on machine m >= its completion on machine m-1.",
+          "Add inter-job precedence: start in position p on a machine >= completion in position p-1 on that same machine."
+        ]
+      },
+      {
+        "index": "sched_strategy_003",
+        "summary": "Disjunctive constraint MILP for fixed-machine job shop scheduling. Use when operations have fixed machine assignments and intra-job precedence, requiring explicit binary ordering of operations sharing machines to prevent overlap.",
+        "procedure": [
+          "Define sets for jobs, operations, machines, and operation pairs sharing machines; specify processing times, machine assignments, and a big-M constant.",
+          "Declare continuous operation start times, binary order variables for each machine-shared operation pair, and a metric variable.",
+          "Add constraints enforcing each operation's start time to be after its job-predecessor's completion plus any gap.",
+          "For each machine-shared operation pair, add paired big-M constraints linking start times to a binary order variable.",
+          "Enforce that exactly one ordering is selected for each machine-shared operation pair.",
+          "Link the metric variable to operation completion times per the objective (e.g., makespan ≥ all completions)."
+        ]
+      }
+    ],
+    "experiences": [
+      {
+        "index": "sched_exp_001",
+        "trigger": "When modeling separation constraints with big-M linearization, using only the time window range for M fails to account for maximum separation time, invalidly cutting feasible solutions.",
+        "guidance": "Set M to at least (max allowed time + max separation time - min allowed time) to ensure the constraint is non-binding when inactive."
+      },
+      {
+        "index": "sched_exp_002",
+        "trigger": "When modeling sequence-dependent minimum separation constraints with binary order variables, misaligning the big-M term with the binary state causes invalid enforcement or lack of enforcement.",
+        "guidance": "For each pair, use two constraints: one for each possible order, ensuring the big-M term correctly activates the separation constraint only when its corresponding order is active."
+      },
+      {
+        "index": "sched_exp_003",
+        "trigger": "When modeling makespan as maximum finish time on final machine, constraining only the last position creates a brittle model that fails if sequence constraints change.",
+        "guidance": "Add constraints that makespan is greater than or equal to finish time of every position on final machine, not just the last one."
+      },
+      {
+        "index": "sched_exp_004",
+        "trigger": "In job shop scheduling, disjunctive constraints must only apply to operations sharing the same machine, requiring an explicit mapping to identify relevant operation pairs.",
+        "guidance": "Add a parameter mapping each operation to its assigned machine, and use it to scope disjunctive constraints to same-machine pairs only."
+      },
+      {
+        "index": "sched_exp_005",
+        "trigger": "When minimizing makespan using the last job's start time on the final machine, remember makespan is completion time, not start time.",
+        "guidance": "Add the last job's processing time on the final machine to its start time in the objective function."
+      },
+      {
+        "index": "sched_exp_006",
+        "trigger": "When makespan is defined as maximum completion time of all operations, relying only on final operation constraints uses implied precedence logic.",
+        "guidance": "Add constraints requiring makespan to be at least each individual operation's completion time, not just final operations."
+      },
+      {
+        "index": "sched_exp_007",
+        "trigger": "When modeling flow shop scheduling with job-position assignment variables, avoid job-indexed start times that require big-M disjunctive constraints for precedence.",
+        "guidance": "Define start time variables indexed by position and machine, enabling linear precedence constraints that sum weighted processing times from prior positions."
+      },
+      {
+        "index": "sched_exp_008",
+        "trigger": "When scheduling objectives include weighted early/late deviation penalties, avoid non-linear max() functions that break MILP linearity requirements.",
+        "guidance": "Define separate non-negative early and late deviation variables with linear constraints, then use their weighted sum in the objective."
+      }
+    ]
+  },
+  "special": {
+    "strategies": [],
+    "experiences": []
+  }
+}

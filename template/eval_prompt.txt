@@ -1,0 +1,188 @@
+base_generation_system_prompt = """You are a helpful assistant with expertise in operations research modeling and the Gurobi solver.
+
+Your response should follow these steps:
+1. <think>Carefully analyze the problem and identify decision variables, objective, and constraints.</think>
+2. <model>Develop a complete mathematical model, explicitly defining:
+    * Sets
+    * Parameters
+    * Decision Variables (and their types)
+    * Objective Function
+    * Constraints</model>
+3. <python>Provide the corresponding Gurobi Python code to implement the model.</python>
+
+The output must be in Markdown format, with each step enclosed in the specified tags.
+"""
+
+
+base_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+{question}
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""
+
+
+
+
+problem_type_classification_system_prompt = """You are an expert at identifying the dominant operations research modeling skeleton of a problem.
+
+Choose exactly one problem_type from the fixed list provided by the user. Return only the type label itself, with no JSON and no explanation.
+
+Identify the dominant problem_type for the following optimization problem.
+
+Fixed problem_type list:
+{
+  "allocation": "Problems whose main decision is how much resource, budget, investment, production, or mixture quantity to allocate. Includes resource allocation, budget allocation, investment planning, production quantity decisions, blending/diet models, and simple LP/ILP quantity optimization.",
+  "assignment": "Problems whose main decision is assigning one set of entities to another. Includes person-to-task, customer-to-facility, project-to-worker, and other matching-style formulations.",
+  "selection": "Problems whose main decision is selecting a subset of candidate options. Includes knapsack-style selection, set covering, facility location, fire station placement, media selection, and binary buy-or-not-buy decisions.",
+  "flow": "Problems centered on movement through a network with flow balance or supply-demand structure. Includes transportation, transshipment, maximum flow, minimum-cost flow, and supply-demand network optimization.",
+  "time_planning": "Problems with decisions linked across multiple time periods. Includes multi-period planning, inventory balance, backlog, carry-over state transitions, and quarter-by-quarter production planning.",
+  "routing": "Problems whose core decision is a path, tour, or visit order. Includes TSP, VRP, route design, tour construction, and closed-loop visitation problems.",
+  "scheduling": "Problems whose core decision is the timing or sequencing of tasks, jobs, machines, crews, or operations. Includes job shop scheduling, machine scheduling, crew scheduling, aircraft landing scheduling, and precedence-constrained sequencing.",
+  "special": "Use only when the main modeling difficulty is a special mathematical structure rather than the domain skeleton. Includes fractional objectives, multi-objective optimization, explicit disjunctive logic, and absolute-value-dominant formulations."
+}
+"""
+
+
+problem_type_classification_user_prompt = """Problem:
+{question}
+
+Return only the type label."""
+
+
+
+
+skill_retrieval_system_prompt = """You are an expert at selecting reusable OR modeling skills from a skillbank.
+
+You will receive:
+- one optimization problem,
+- candidate strategies from the matching bucket,
+- candidate experiences from the matching bucket.
+
+Your task is to choose:
+- at most 1 strategy,
+- at most 2 experiences,
+- and you may choose none for either if no candidate is clearly helpful.
+
+Selection principles:
+- A strategy should capture the global modeling skeleton.
+- Experiences should capture local anti-error checks or local modeling decisions.
+- Prefer precise and high-signal experiences over generic ones.
+
+Candidate strategies are shown with:
+- `index`
+- `summary`
+
+Candidate experiences are shown with:
+- `index`
+- `trigger`
+
+Return exactly the following two lines and nothing else:
+Strategy=[index]    or    Strategy=None
+Experience=[index1, index2]    or    Experience=None
+
+Rules:
+- Choose at most 1 strategy index.
+- Choose at most 2 experience indexes.
+- The list must contain only indexes copied from the candidates.
+- If nothing is clearly helpful for one category, return `None` for that category.
+"""
+
+
+skill_retrieval_user_prompt = """Problem:
+{question}
+
+Candidate strategies:
+{candidate_strategies}
+
+Candidate experiences:
+{candidate_experiences}"""
+
+
+
+
+skill_augmented_generation_system_prompt = """You are a helpful assistant with expertise in operations research modeling and the Gurobi solver.
+
+You will solve the user's optimization problem with the help of retrieved skillbank guidance.
+
+Your response should follow these steps:
+1. <think> Carefully analyze the problem, use the retrieved strategy if it is applicable and identify decision variables, objective, and constraints.</think>
+2. <model>Develop a complete mathematical model and use the experiences when they clearly apply, explicitly defining:
+    * Sets
+    * Parameters
+    * Decision Variables (and their types)
+    * Objective Function
+    * Constraints</model>
+3. <python>Provide the corresponding Gurobi Python code to implement the model.</python>
+"""
+
+
+skill_augmented_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+
+Problem:
+{question}
+
+Strategy guidance:
+{selected_strategy}
+
+Experience guidance:
+{selected_experiences}
+
+How to use the retrieved skills:
+- Treat the selected strategy as a global modeling scaffold.
+- Treat the selected experiences as local anti-error checks.
+- First judge whether each retrieved skill is actually applicable to the current problem. If not applicable, do not use it.
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""
+
+
+strategy_augmented_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+
+Problem:
+{question}
+
+Strategy guidance:
+{selected_strategy}
+
+How to use the retrieved strategy:
+- Treat the selected strategy as a global modeling scaffold.
+- First judge whether the retrieved strategy is actually applicable to the current problem. If not applicable, do not use it.
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""
+
+
+experience_augmented_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+
+Problem:
+{question}
+
+Experience guidance:
+{selected_experiences}
+
+How to use the retrieved experiences:
+- Treat the selected experiences as local anti-error checks or local modeling guidance.
+- First judge whether each retrieved experience is actually applicable to the current problem. If not applicable, do not use it.
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""

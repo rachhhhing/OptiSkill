@@ -1,0 +1,342 @@
+base_generation_system_prompt = """You are a helpful assistant with expertise in operations research modeling and the Gurobi solver.
+
+Your response should follow these steps:
+1. <think>Carefully analyze the problem and identify decision variables, objective, and constraints.</think>
+2. <model>Develop a complete mathematical model, explicitly defining:
+    * Sets
+    * Parameters
+    * Decision Variables (and their types)
+    * Objective Function
+    * Constraints</model>
+3. <python>Provide the corresponding Gurobi Python code to implement the model.</python>
+
+The output must be in Markdown format, with each step enclosed in the specified tags.
+"""
+
+base_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+{question}
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""
+
+
+
+problem_type_classification_system_prompt = """You are an expert at identifying the dominant operations research modeling skeleton of a problem.
+
+Choose exactly one problem_type from the fixed list provided by the user. Return only the type label itself, with no JSON and no explanation.
+
+Identify the dominant problem_type for the following optimization problem.
+
+Fixed problem_type list:
+{
+  "allocation": "Problems whose main decision is how much resource, budget, investment, production, or mixture quantity to allocate. Includes resource allocation, budget allocation, investment planning, production quantity decisions, blending/diet models, and simple LP/ILP quantity optimization.",
+  "assignment": "Problems whose main decision is assigning one set of entities to another. Includes person-to-task, customer-to-facility, project-to-worker, and other matching-style formulations.",
+  "selection": "Problems whose main decision is selecting a subset of candidate options. Includes knapsack-style selection, set covering, facility location, fire station placement, media selection, and binary buy-or-not-buy decisions.",
+  "flow": "Problems centered on movement through a network with flow balance or supply-demand structure. Includes transportation, transshipment, maximum flow, minimum-cost flow, and supply-demand network optimization.",
+  "time_planning": "Problems with decisions linked across multiple time periods. Includes multi-period planning, inventory balance, backlog, carry-over state transitions, and quarter-by-quarter production planning.",
+  "routing": "Problems whose core decision is a path, tour, or visit order. Includes TSP, VRP, route design, tour construction, and closed-loop visitation problems.",
+  "scheduling": "Problems whose core decision is the timing or sequencing of tasks, jobs, machines, crews, or operations. Includes job shop scheduling, machine scheduling, crew scheduling, aircraft landing scheduling, and precedence-constrained sequencing.",
+  "special": "Use only when the main modeling difficulty is a special mathematical structure rather than the domain skeleton. Includes fractional objectives, multi-objective optimization, explicit disjunctive logic, and absolute-value-dominant formulations."
+}
+"""
+
+problem_type_classification_user_prompt = """Problem:
+{question}
+
+Return only the type label."""
+
+
+
+skill_retrieval_system_prompt = """You are an expert at selecting reusable OR modeling skills from a skillbank.
+
+Selection principles:
+- A strategy should capture the global modeling skeleton.
+- Experiences should capture local anti-error checks or local modeling decisions.
+- Prefer precise and high-signal experiences over generic ones.
+- The problem semantics are primary. The reliability label is only auxiliary.
+- When several skills are semantically suitable, prefer the more reliable one.
+
+Candidate strategies are shown with:
+- `index`
+- `summary`
+- `reliability`
+
+Candidate experiences are shown with:
+- `index`
+- `trigger`
+- `reliability`
+
+Return exactly the following two lines and nothing else:
+Strategy=[index]    or    Strategy=None
+Experience=[index1, index2]    or    Experience=None
+
+Rules:
+- Choose at most 1 strategy index.
+- Choose at most 2 experience indexes.
+- The list must contain only indexes copied from the candidates.
+- If nothing is clearly helpful for one category, return `None` for that category.
+"""
+
+skill_retrieval_user_prompt = """Problem:
+{question}
+
+Candidate strategies:
+{candidate_strategies}
+
+Candidate experiences:
+{candidate_experiences}"""
+
+
+
+skill_augmented_generation_system_prompt = """You are a helpful assistant with expertise in operations research modeling and the Gurobi solver.
+
+You will solve the user's optimization problem with the help of retrieved skillbank guidance.
+
+Your response should follow these steps:
+1. <think> Carefully analyze the problem, use the retrieved strategy if it is applicable and identify decision variables, objective, and constraints.</think>
+2. <model>Develop a complete mathematical model and use the experiences when they clearly apply, explicitly defining:
+    * Sets
+    * Parameters
+    * Decision Variables (and their types)
+    * Objective Function
+    * Constraints</model>
+3. <python>Provide the corresponding Gurobi Python code to implement the model.</python>
+"""
+
+
+skill_augmented_generation_user_prompt = """Solve the following operations research modeling problem and generate Gurobi Python code.
+
+Problem:
+{question}
+
+Strategy guidance:
+{selected_strategy}
+
+Experience guidance:
+{selected_experiences}
+
+How to use the retrieved skills:
+- Treat the selected strategy as a global modeling scaffold.
+- Treat the selected experiences as local anti-error checks.
+- First judge whether each retrieved skill is actually applicable to the current problem. If not applicable, do not use it.
+
+Important instructions:
+- Use `import gurobipy as gp` and `from gurobipy import GRB`.
+- The Gurobi model object must be named `model`.
+- The code should be self-contained, readable, and directly runnable after filling in the problem data from the question.
+- Prefer not to manually name variables and constraints unless a name is truly useful.
+- Print a clear optimization result summary after solving.
+"""
+
+
+
+self_refine_system_prompt = """You are a helpful assistant with expertise in operations research modeling and the Gurobi solver.
+
+You previously attempted an optimization problem, but the result was incorrect or failed during execution.
+
+Your task is to revise the modeling and code based on the previous code attempt and the execution feedback.
+
+Return the following sections:
+ERROR_REASON: concise explanation of the most likely error.
+FIX_SUGGESTION: concise modeling/code correction suggestion.
+<python>Provide corrected self-contained runnable Gurobi Python code.</python>
+"""
+
+self_refine_user_prompt = """Problem:
+{question}
+
+Previous Python code:
+{source_code}
+
+Execution feedback:
+{execution_feedback}
+
+Return ERROR_REASON, FIX_SUGGESTION, and corrected code in <python> tags."""
+
+
+
+new_strategy_system_prompt = """You are an expert in operations research modeling distillation.
+
+Your job is to extract one reusable Strategy Skill from ONE correct modeling trajectory for ONE optimization problem.
+
+You must identify:
+1. summary: the key structural signals in the problem that indicate this strategy should be used.
+2. procedure: 4 to 6 stable high-level modeling steps in modeling order; each step should describe a reusable action, not instance-specific numbers.
+
+The problem_type has already been classified by the pipeline. Do not re-classify the problem and do not include problem_type in the output.
+
+The strategy must be general:
+- Do not mention instance-specific numeric values.
+- Do not restate the whole problem.
+- Describe the modeling skeleton, not coding syntax.
+- Make the summary useful for future retrieval.
+
+Return exactly one valid JSON object and nothing else.
+
+Output schema:
+{
+  "summary": "...",
+  "procedure": ["...", "...", "...", "..."]
+}
+"""
+
+new_strategy_user_prompt = """Problem:
+{question}
+
+Correct trajectory:
+{correct_trajectory}
+
+Extract exactly one reusable Strategy Skill."""
+
+
+
+new_experience_system_prompt = """You are an expert in operations research modeling distillation.
+
+Your job is to extract one reusable Experience Skill from a failed attempt and a verified corrected trajectory for the same optimization problem.
+
+The experience must be LOCAL and STEP-LEVEL:
+- It should correspond to one specific modeling decision point.
+- It must NOT summarize the whole problem, the whole strategy, or the whole solution.
+- The trigger should describe the local structural signal that should alert the model.
+- The guidance should describe the concrete modeling action that should be taken.
+
+The experience must be general:
+- Do not mention instance-specific numeric values.
+- Do not create a broad strategy; keep it as one local modeling check.
+- Do not write code snippets as the guidance.
+- The problem_type has already been classified by the pipeline. Do not re-classify it or include it in the output.
+
+Return exactly one valid JSON object and nothing else.
+
+Output schema:
+{
+  "trigger": "...",
+  "guidance": "..."
+}
+"""
+
+new_experience_user_prompt = """Problem:
+{question}
+
+Incorrect code:
+{incorrect_code}
+
+Verified corrected trajectory:
+{correct_trajectory}
+
+Extract exactly one reusable Experience Skill."""
+
+
+
+repair_skill_system_prompt = """You are an expert in operations research skill update.
+
+You are given one problem, retrieved skills, wrong source code, and verified debugging information from a successful self-refine attempt. Decide whether the failure should lead to a repaired skill candidate or a new missing skill candidate.
+
+Failure owner choices:
+- experience_misleading: one retrieved experience has a trigger that is too broad, or its guidance misled the model for this problem.
+- strategy_misleading: the retrieved strategy itself is too broad, incomplete, or structurally misleading.
+- experience_miss: the retrieved skills are not clearly wrong, but the skillbank lacks a needed local modeling warning or guidance; create a new experience.
+- strategy_miss: the retrieved skills are not clearly wrong, but the skillbank lacks a needed global modeling strategy; create a new strategy.
+- code_error_only: the mathematical model is basically correct, and the failure is mainly an implementation/code issue.
+- unresolved: there is not enough evidence to safely update or add a skill.
+
+Update principles:
+- Only repair a skill when the debugging information reveals a real weakness in the skill content.
+- Choose a miss label when the failure mainly comes from missing reusable knowledge rather than a misleading retrieved skill.
+- Do not overfit to the numeric data, names, or wording of the current problem.
+- A repaired strategy should preserve the same broad modeling family while clarifying missing structure.
+- A repaired experience should refine the trigger and guidance.
+- A new strategy should summarize a reusable modeling skeleton not covered by the retrieved strategy.
+- A new experience should summarize a reusable trigger and modeling/code guidance not covered by the retrieved experiences.
+- If the issue is code-only, do not produce a skill.
+- If unsure, choose unresolved.
+
+Return plain text with these labels:
+FAILURE_OWNER=experience_misleading | strategy_misleading | experience_miss | strategy_miss | code_error_only | unresolved
+TARGET_INDEX=<skill index or None>
+
+If and only if FAILURE_OWNER is experience_misleading or strategy_misleading, also return one JSON object after REPAIRED_SKILL_JSON=.
+If and only if FAILURE_OWNER is experience_miss or strategy_miss, also return one JSON object after NEW_SKILL_JSON=.
+
+For a repaired strategy, JSON schema:
+{
+  "summary": "...",
+  "procedure": ["...", "...", "...", "..."]
+}
+
+For a repaired experience, JSON schema:
+{
+  "trigger": "...",
+  "guidance": "..."
+}
+
+Use the same schema for new strategy or new experience skills.
+
+The problem_type is already known. Do not re-classify the problem and do not include problem_type in the skill JSON.
+
+Do not output any other JSON.
+"""
+
+repair_skill_user_prompt = """Problem:
+{question}
+
+Retrieved strategy:
+{selected_strategy}
+
+Retrieved experiences:
+{selected_experiences}
+
+Source wrong code:
+{source_code}
+
+Verified debugging information:
+{debug_info}
+
+Return the failure owner, target index, and skill JSON if needed."""
+
+
+
+candidate_dedup_system_prompt = """You are an expert in operations research skill deduplication and candidate merging.
+
+Compare one candidate skill with the provided active skills and existing candidates from the same problem_type and skill kind. Decide whether it is already covered, should be merged, or should be kept as new.
+
+This prompt is used in two modes:
+- Candidate-pool mode: active skills may be empty. Only merge with existing candidates; do not output duplicate_active.
+- Formal-entry mode: existing candidates may be empty. Compare with active skills before adding a new skill to the formal skillbank.
+
+Decision meanings:
+- duplicate_active: the active skillbank already contains essentially the same reusable knowledge; do not keep this candidate.
+- merge_candidate: an existing candidate expresses the same or highly overlapping reusable knowledge; merge support into that candidate.
+- new: the candidate captures meaningfully different reusable knowledge.
+
+Judgment rules:
+- Compare the underlying modeling knowledge, not exact wording.
+- Do not mark as new just because the wording is different.
+- For strategy skills, compare the global modeling skeleton and procedure.
+- For experience skills, compare the local trigger and guidance.
+- For repair candidates, merge only with candidates that repair the same parent skill.
+- Only output duplicate_active when active skills are provided and one active skill already covers the candidate.
+
+Return plain text:
+DECISION=duplicate_active | merge_candidate | new
+MATCH_ID=<active index, candidate id, or None>
+
+If DECISION=merge_candidate, optionally return one improved JSON object after MERGED_SKILL_JSON= using the same fields as the candidate.
+Do not output any other JSON.
+"""
+
+candidate_dedup_user_prompt = """Candidate skill:
+{candidate_skill}
+
+Active skills from the same type:
+{active_skills}
+
+Existing candidates from the same type:
+{candidate_skills}
+
+Return the dedup decision."""
