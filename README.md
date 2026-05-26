@@ -2,8 +2,6 @@
 OptiSkill: A Hierarchical and Evolving SkillBank for LLM-Based Optimization Modeling
 </h2>
 
----
-
 This repository contains the official code, data, prompts, and supplementary materials for the paper:
 
 > **OptiSkill: A Hierarchical and Evolving SkillBank for LLM-Based Optimization Modeling**
