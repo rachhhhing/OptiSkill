@@ -2,10 +2,6 @@
 OptiSkill: A Hierarchical and Evolving SkillBank for LLM-Based Optimization Modeling
 </h2>
 
-<p align="center">
-  <b>Skill-augmented operations research modeling with reusable, solver-verified formulation knowledge</b>
-</p>
-
 ---
 
 This repository contains the official code, data, prompts, and supplementary materials for the paper:
