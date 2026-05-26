@@ -26,7 +26,7 @@ The SkillBank is further improved through **stable batch-level test-time evoluti
 ## 🧠 Framework Overview
 
 <div align="center">
-  <img src="assets/framework.pdf" width="900"/>
+  <img src="assets/framework.png" width="900"/>
   <p><em>
   Figure 1: Overview of OptiSkill. OptiSkill constructs a hierarchical SkillBank from verified modeling trajectories, retrieves relevant skills for OR formulation, and evolves the SkillBank at test time.
   </em></p>
@@ -111,17 +111,17 @@ Best results among agentic methods are shown in **bold**.
 | Backbone | Method | NL4OPT | MAMO Easy | MAMO Cpx. | NLP4LP | OptiB. | CpxOR | IndOR | OptM. | Avg. |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | DouBao-Seed-2.0 | CoE | 78.4 | 91.6 | 63.1 | 94.3 | 84.4 | 50.0 | 64.3 | 34.9 | 70.1 |
-| DouBao-Seed-2.0 | OptiMUS | 75.1 | 88.4 | 45.9 | 89.9 | 84.6 | 44.4 | 61.9 | 31.9 | 65.3 |
-| DouBao-Seed-2.0 | OptiTree | 76.5 | 92.1 | 62.2 | 91.0 | 83.1 | 44.4 | 69.0 | 38.6 | 69.6 |
-| DouBao-Seed-2.0 | AlphaOPT | 75.6 | 91.4 | 55.0 | 93.3 | 85.1 | 55.6 | 66.7 | 36.1 | 69.9 |
-| DouBao-Seed-2.0 | ReLoop | 76.1 | 91.2 | 62.2 | 92.7 | 84.9 | 50.0 | 59.5 | 32.5 | 68.6 |
-| DouBao-Seed-2.0 | **OptiSkill** | **78.9** | 90.8 | **64.0** | 93.8 | **85.4** | **61.1** | **71.4** | **40.4** | **73.2** |
-| DeepSeek-V4 | CoE | 78.9 | **96.1** | 57.7 | 92.1 | 82.6 | 50.0 | 66.7 | 39.2 | 70.4 |
-| DeepSeek-V4 | OptiMUS | 77.5 | 88.4 | 38.7 | 88.2 | 83.1 | 44.4 | 59.5 | 31.3 | 63.9 |
-| DeepSeek-V4 | OptiTree | 80.3 | 93.9 | **60.4** | 93.8 | 86.9 | 50.0 | 71.4 | 41.0 | 72.2 |
-| DeepSeek-V4 | AlphaOPT | 76.1 | 95.8 | 54.1 | 90.4 | 80.6 | 55.6 | 64.3 | 39.2 | 69.5 |
-| DeepSeek-V4 | ReLoop | 74.7 | 91.6 | 56.8 | 89.3 | 79.9 | 55.6 | 66.7 | 27.1 | 67.7 |
-| DeepSeek-V4 | **OptiSkill** | **80.8** | 94.3 | 56.8 | **94.9** | **87.6** | **61.1** | **73.8** | **41.6** | **73.9** |
+|                 | OptiMUS | 75.1 | 88.4 | 45.9 | 89.9 | 84.6 | 44.4 | 61.9 | 31.9 | 65.3 |
+|                 | OptiTree | 76.5 | 92.1 | 62.2 | 91.0 | 83.1 | 44.4 | 69.0 | 38.6 | 69.6 |
+|                 | AlphaOPT | 75.6 | 91.4 | 55.0 | 93.3 | 85.1 | 55.6 | 66.7 | 36.1 | 69.9 |
+|                 | ReLoop | 76.1 | 91.2 | 62.2 | 92.7 | 84.9 | 50.0 | 59.5 | 32.5 | 68.6 |
+|                 | **OptiSkill** | **78.9** | 90.8 | **64.0** | 93.8 | **85.4** | **61.1** | **71.4** | **40.4** | **73.2** |
+| DeepSeek-V4     | CoE | 78.9 | **96.1** | 57.7 | 92.1 | 82.6 | 50.0 | 66.7 | 39.2 | 70.4 |
+|                 | OptiMUS | 77.5 | 88.4 | 38.7 | 88.2 | 83.1 | 44.4 | 59.5 | 31.3 | 63.9 |
+|                 | OptiTree | 80.3 | 93.9 | **60.4** | 93.8 | 86.9 | 50.0 | 71.4 | 41.0 | 72.2 |
+|                 | AlphaOPT | 76.1 | 95.8 | 54.1 | 90.4 | 80.6 | 55.6 | 64.3 | 39.2 | 69.5 |
+|                 | ReLoop | 74.7 | 91.6 | 56.8 | 89.3 | 79.9 | 55.6 | 66.7 | 27.1 | 67.7 |
+|                 | **OptiSkill** | **80.8** | 94.3 | 56.8 | **94.9** | **87.6** | **61.1** | **73.8** | **41.6** | **73.9** |
 
 **Key observations**:
 
@@ -134,7 +134,7 @@ Best results among agentic methods are shown in **bold**.
 ## 📈 Test-Time SkillBank Evolution
 
 <div align="center">
-  <img src="assets/res_evolve.pdf" width="850"/>
+  <img src="assets/res_evolve.png" width="850"/>
   <p><em>
   Figure 2: Effect of static and evolved SkillBank across benchmarks.
   </em></p>
